@@ -1,5 +1,5 @@
 import type { Attachment, EmailReceivedEvent, Resend } from 'resend';
-import { type Config, extractAddress, extractName, matchInboxes } from './config';
+import { type Config, extractAddress, extractName, matchInboxes, pickSender } from './config';
 
 type ReceivedEmail = EmailReceivedEvent['data'];
 
@@ -58,7 +58,7 @@ export async function forwardEmail(
   event: ReceivedEmail,
 ): Promise<ForwardResult> {
   // Never forward our own forwards back into the loop.
-  if (extractAddress(event.from) === config.forwardFrom) {
+  if (config.forwardFrom.includes(extractAddress(event.from))) {
     return { status: 'skipped', reason: 'sent by the forwarder itself' };
   }
 
@@ -122,7 +122,8 @@ export async function forwardEmail(
 
   // Show the original sender's name, but send from our verified address.
   const senderName = extractName(email.from) ?? extractAddress(email.from);
-  const from = `"${senderName.replace(/"/g, '')} via Forwarder" <${config.forwardFrom}>`;
+  const sender = pickSender(config.forwardFrom, inboxes);
+  const from = `"${senderName.replace(/"/g, '')} via Forwarder" <${sender}>`;
   const replyTo = email.reply_to?.length ? email.reply_to : [email.from];
 
   const { data: sent, error: sendError } = await resend.emails.send(

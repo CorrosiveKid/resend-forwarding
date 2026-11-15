@@ -146,6 +146,12 @@ describe('POST /api/webhook', () => {
     expect(sentHeaders[0].get('idempotency-key')).toBe('forward/em_123');
   });
 
+  it('sends from the FORWARD_FROM address on the inbox domain', async () => {
+    vi.stubEnv('FORWARD_FROM', 'fwd@other.dev, fwd@acme.dev');
+    await POST(signedRequest(receivedEvent()));
+    expect(sent[0].from).toBe('"Jane Doe via Forwarder" <fwd@acme.dev>');
+  });
+
   it('skips emails to inboxes that are not configured', async () => {
     const res = await POST(
       signedRequest(receivedEvent({ to: ['sales@acme.dev'], received_for: ['sales@acme.dev'] })),

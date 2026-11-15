@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, extractAddress, extractName, loadConfig, matchInboxes } from '@/lib/config';
+import {
+  ConfigError,
+  extractAddress,
+  extractName,
+  loadConfig,
+  matchInboxes,
+  pickSender,
+} from '@/lib/config';
 
 const base = {
   RESEND_API_KEY: 're_test',
@@ -12,11 +19,12 @@ describe('loadConfig', () => {
   it('parses required and optional values', () => {
     const config = loadConfig({
       ...base,
-      FORWARD_TO: 'Me@Gmail.com, other@example.com',
+      FORWARD_TO: 'Me <Me@Gmail.com>, other@example.com',
+      FORWARD_FROM: 'fwd@acme.dev; Side Forwarder <fwd@side.dev>',
       INBOXES: 'hello@acme.dev, *@side.dev',
     });
     expect(config.forwardTo).toEqual(['me@gmail.com', 'other@example.com']);
-    expect(config.forwardFrom).toBe('fwd@acme.dev');
+    expect(config.forwardFrom).toEqual(['fwd@acme.dev', 'fwd@side.dev']);
     expect(config.inboxes).toEqual(['hello@acme.dev', '*@side.dev']);
     expect(config.includeHeader).toBe(true);
   });
@@ -49,5 +57,18 @@ describe('matchInboxes', () => {
     expect(matchInboxes(['Hello <hello@acme.dev>'], inboxes)).toEqual(['hello@acme.dev']);
     expect(matchInboxes(['anything@side.dev'], inboxes)).toEqual(['anything@side.dev']);
     expect(matchInboxes(['other@acme.dev', 'x@side.dev.evil.com'], inboxes)).toEqual([]);
+  });
+});
+
+describe('pickSender', () => {
+  const senders = ['fwd@acme.dev', 'fwd@side.dev'];
+
+  it('uses the sender on the same domain as the inbox', () => {
+    expect(pickSender(senders, ['hello@side.dev'])).toBe('fwd@side.dev');
+    expect(pickSender(senders, ['hello@acme.dev'])).toBe('fwd@acme.dev');
+  });
+
+  it('falls back to the first sender', () => {
+    expect(pickSender(senders, ['hello@other.com'])).toBe('fwd@acme.dev');
   });
 });
