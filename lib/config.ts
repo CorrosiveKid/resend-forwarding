@@ -2,7 +2,8 @@ export interface Config {
   resendApiKey: string;
   webhookSecret: string;
   forwardTo: string[];
-  forwardFrom: string;
+  /** Sender addresses; the one matching the inbox's domain is used. */
+  forwardFrom: string[];
   inboxes: string[];
   includeHeader: boolean;
 }
@@ -11,7 +12,7 @@ export class ConfigError extends Error {}
 
 function splitList(value: string | undefined): string[] {
   return (value ?? '')
-    .split(/[,;\s]+/)
+    .split(/[,;]+/)
     .map((v) => v.trim().toLowerCase())
     .filter(Boolean);
 }
@@ -46,11 +47,16 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new ConfigError('FORWARD_TO must contain at least one email address');
   }
 
+  const forwardFrom = splitList(env.FORWARD_FROM).map(extractAddress);
+  if (forwardFrom.length === 0) {
+    throw new ConfigError('FORWARD_FROM must contain at least one email address');
+  }
+
   return {
     resendApiKey: env.RESEND_API_KEY!.trim(),
     webhookSecret: env.RESEND_WEBHOOK_SECRET!.trim(),
     forwardTo,
-    forwardFrom: extractAddress(env.FORWARD_FROM!),
+    forwardFrom,
     inboxes: splitList(env.INBOXES),
     includeHeader: env.FORWARD_HEADER?.trim().toLowerCase() !== 'false',
   };
@@ -75,4 +81,17 @@ export function matchInboxes(recipients: string[], inboxes: string[]): string[] 
   return addresses.filter((address) =>
     inboxes.some((pattern) => matchesPattern(address, pattern)),
   );
+}
+
+function domainOf(address: string): string {
+  return address.slice(address.lastIndexOf('@') + 1);
+}
+
+/**
+ * Picks the sender for a forward: the first FORWARD_FROM address on the same
+ * domain as a matched inbox, otherwise the first FORWARD_FROM address.
+ */
+export function pickSender(forwardFrom: string[], inboxes: string[]): string {
+  const domains = new Set(inboxes.map(domainOf));
+  return forwardFrom.find((address) => domains.has(domainOf(address))) ?? forwardFrom[0];
 }

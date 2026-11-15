@@ -13,6 +13,7 @@ Give your domain a real inbox like `hello@yourdomain.com` without paying for a m
 - Shows who it's from: `Jane Doe via Forwarder <forwarder@yourdomain.com>`
 - Choose which addresses get forwarded (exact or wildcard, like `*@yourdomain.com`)
 - Forward to one or several personal addresses
+- Works across several domains, sending each forward from that domain
 - Verifies Resend webhook signatures and ignores everything unsigned
 - Safe against webhook retries (idempotent sends) and forwarding loops
 - No database. One serverless function. Fits comfortably in Vercel's free tier.
@@ -78,7 +79,7 @@ Send an email to an address on your receiving domain. It should land in your per
 | `RESEND_API_KEY` | Yes | Resend API key with **Full access**. |
 | `RESEND_WEBHOOK_SECRET` | Yes | Signing secret of your Resend webhook (`whsec_...`). |
 | `FORWARD_TO` | Yes | Where to forward. Comma-separate for several: `you@gmail.com, partner@gmail.com`. |
-| `FORWARD_FROM` | Yes | Sender address for forwarded emails. Must be on a domain verified in Resend. |
+| `FORWARD_FROM` | Yes | Sender address for forwarded emails. Must be on a domain verified in Resend. Receiving on several domains? List one per domain, `forwarder@one.com, forwarder@two.com`, and each forward is sent from the address on the inbox's domain (falling back to the first). |
 | `INBOXES` | No | Which receiving addresses to forward, comma-separated. Supports wildcards: `hello@yourdomain.com, *@side-project.dev`. Leave unset to forward **everything** Resend receives. |
 | `FORWARD_HEADER` | No | Set to `false` to leave out the "Forwarded message" block (From/Date/Subject/To) at the top of each email. Default `true`. |
 
